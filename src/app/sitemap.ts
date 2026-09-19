@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { getSeo } from "@/lib/contentStore";
+import { resolveSiteUrl } from "@/lib/seo";
 
 const staticPaths = [
   "/",
@@ -23,7 +24,7 @@ const staticPaths = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const seo = await getSeo();
-  const base = seo.siteUrl.replace(/\/$/, "");
+  const base = (await resolveSiteUrl(seo.siteUrl)).replace(/\/$/, "");
   const now = new Date();
 
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({

@@ -22,7 +22,7 @@ export const defaultSeo: SeoSettings = {
     "Kauno teniso klubas — seniausias teniso klubas Lietuvoje, įkurtas 1924 m. Turnyrai Kaune, nariai, reitingai, galerija ir aktualijos.",
   keywords:
     "Kauno teniso klubas, tenisas Kaunas, KTK, teniso turnyrai Kaunas, teniso klubas Lietuva, Hegelmann turnyras, NEODENTA turnyras, teniso reitingai",
-  ogImage: "/images/logo.png",
+  ogImage: "/images/og-share.png",
   pages: {
     "/": {
       title: "Kauno teniso klubas",
