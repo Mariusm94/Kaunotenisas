@@ -41,7 +41,13 @@ export default async function TournamentPage({ params }: Props) {
   const draws = await listDraws(item.slug);
   const hasLeagueDraws = draws.length > 0;
   const registration = regBundle?.registration;
-  const showOnlineForm = item.status === "registracija" && Boolean(registration?.enabled);
+  const formTitle = registration?.title?.trim() || `Registracija — ${item.title}`;
+  const formIntro =
+    registration?.intro?.trim() ||
+    "Užpildykite formą — vardas, pavardė, el. paštas ir telefonas. Jei žaidžiate dvejetus, galite iškart pridėti partnerį.";
+  const allowPartner = registration?.allowPartner ?? true;
+  // Status „registracija“ = forma vieša. DB įrašas kuriamas automatiškai / submit metu.
+  const showOnlineForm = item.status === "registracija";
 
   return (
     <div>
@@ -156,12 +162,12 @@ export default async function TournamentPage({ params }: Props) {
 
         {item.status === "registracija" ? (
           <section id="registracija" className="mt-14 scroll-mt-28 rounded-[2rem] bg-court-deep p-8 text-white">
-            {showOnlineForm && registration ? (
+            {showOnlineForm ? (
               <TournamentRegistrationForm
                 slug={item.slug}
-                title={registration.title}
-                intro={registration.intro}
-                allowPartner={registration.allowPartner}
+                title={formTitle}
+                intro={formIntro}
+                allowPartner={allowPartner}
               />
             ) : (
               <>

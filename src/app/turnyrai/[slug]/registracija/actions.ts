@@ -1,11 +1,10 @@
-"use server";
-
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import {
   createRegistrationEntry,
-  getRegistrationByTournamentSlug,
+  ensureOpenRegistration,
+  ensureRegistrationSchema,
 } from "@/lib/registrationStore";
 import { rateLimit } from "@/lib/rateLimit";
 
@@ -40,6 +39,12 @@ export async function submitTournamentRegistrationAction(
     return { ok: false, message: "Per daug bandymų. Bandykite vėliau." };
   }
 
+  try {
+    await ensureRegistrationSchema();
+  } catch {
+    return { ok: false, message: "Registracijos sistema laikinai nepasiekiama. Bandykite vėliau." };
+  }
+
   const tournament = await prisma.tournament.findUnique({
     where: { slug },
   });
@@ -51,10 +56,9 @@ export async function submitTournamentRegistrationAction(
     return { ok: false, message: "Registracija šiuo metu uždaryta." };
   }
 
-  const bundle = await getRegistrationByTournamentSlug(slug);
-  const registration = bundle?.registration;
-  if (!registration?.enabled) {
-    return { ok: false, message: "Registracijos forma dar neįjungta." };
+  const registration = await ensureOpenRegistration(tournament);
+  if (!registration) {
+    return { ok: false, message: "Nepavyko atidaryti registracijos formos. Bandykite vėliau." };
   }
 
   if (!firstName || !lastName || !email || !phone) {
@@ -74,17 +78,21 @@ export async function submitTournamentRegistrationAction(
     }
   }
 
-  await createRegistrationEntry({
-    registrationId: registration.id,
-    firstName,
-    lastName,
-    email,
-    phone,
-    partnerFirstName: withPartner && allowPartner ? partnerFirstName : null,
-    partnerLastName: withPartner && allowPartner ? partnerLastName : null,
-    partnerEmail: withPartner && allowPartner ? partnerEmail : null,
-    partnerPhone: withPartner && allowPartner ? partnerPhone : null,
-  });
+  try {
+    await createRegistrationEntry({
+      registrationId: registration.id,
+      firstName,
+      lastName,
+      email,
+      phone,
+      partnerFirstName: withPartner && allowPartner ? partnerFirstName : null,
+      partnerLastName: withPartner && allowPartner ? partnerLastName : null,
+      partnerEmail: withPartner && allowPartner ? partnerEmail : null,
+      partnerPhone: withPartner && allowPartner ? partnerPhone : null,
+    });
+  } catch {
+    return { ok: false, message: "Nepavyko išsaugoti registracijos. Bandykite dar kartą." };
+  }
 
   revalidatePath(`/turnyrai/${slug}`);
   revalidatePath(`/admin/turnyrai/${slug}/registracija`);
