@@ -13,6 +13,7 @@ export default function Header() {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const loggedIn = Boolean(session?.user);
 
   useEffect(() => {
@@ -25,6 +26,20 @@ export default function Header() {
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!open) return;
+    const next: Record<string, boolean> = {};
+    for (const item of nav) {
+      if (!item.children?.length) continue;
+      const childActive = item.children.some(
+        (child) => pathname === child.href || pathname.startsWith(`${child.href}/`),
+      );
+      const parentActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+      if (childActive || parentActive) next[item.href] = true;
+    }
+    setExpanded(next);
+  }, [open, pathname]);
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -160,31 +175,72 @@ export default function Header() {
         >
           <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-gold uppercase">Meniu</p>
           <div className="grid gap-1 pb-4">
-            {nav.map((item) => (
-              <div key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`block rounded-xl px-3 py-3 text-base font-medium ${
-                    isActive(item.href) ? "bg-white/10 text-gold" : "text-white"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-                {item.children ? (
-                  <div className="mb-2 ml-2 grid border-l border-white/15 pl-2">
-                    {item.children.map((child) => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className="rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white"
+            {nav.map((item) => {
+              const hasChildren = Boolean(item.children?.length);
+              const isOpen = Boolean(expanded[item.href]);
+              const panelId = `mobile-sub-${item.href.replace(/\W+/g, "-")}`;
+
+              return (
+                <div key={item.href}>
+                  <div className="flex items-stretch gap-1">
+                    <Link
+                      href={item.href}
+                      className={`min-w-0 flex-1 rounded-xl px-3 py-3 text-base font-medium ${
+                        isActive(item.href) ? "bg-white/10 text-gold" : "text-white"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                    {hasChildren ? (
+                      <button
+                        type="button"
+                        className={`inline-flex w-11 shrink-0 items-center justify-center rounded-xl text-white/80 transition hover:bg-white/10 ${
+                          isOpen ? "bg-white/10 text-gold" : ""
+                        }`}
+                        aria-expanded={isOpen}
+                        aria-controls={panelId}
+                        aria-label={isOpen ? `Suskleisti: ${item.label}` : `Išskleisti: ${item.label}`}
+                        onClick={() =>
+                          setExpanded((prev) => ({ ...prev, [item.href]: !prev[item.href] }))
+                        }
                       >
-                        {child.label}
-                      </Link>
-                    ))}
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                          className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+                        >
+                          <path
+                            d="M6 9l6 6 6-6"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            ))}
+                  {hasChildren && isOpen ? (
+                    <div id={panelId} className="mb-2 ml-2 grid border-l border-white/15 pl-2">
+                      {item.children!.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`rounded-lg px-3 py-2 text-sm hover:bg-white/5 hover:text-white ${
+                            isActive(child.href) ? "bg-white/10 text-gold" : "text-white/70"
+                          }`}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
           <div className="grid gap-2 border-t border-white/10 pt-4">
