@@ -256,6 +256,17 @@ async function main() {
 
   await seedContent();
 
+  // Fill archived / non-Hegelmann league tables from JSON dumps
+  const { spawnSync } = await import("node:child_process");
+  const sync = spawnSync(process.execPath, ["scripts/sync-tournament-tables.mjs"], {
+    cwd: process.cwd(),
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (sync.status !== 0) {
+    throw new Error("sync-tournament-tables failed");
+  }
+
   console.log(`Admin: ${email}`);
   console.log(`Narys demo: ${memberEmail} (${memberPassword})`);
   console.log(`Naujienos: ${news.length}`);

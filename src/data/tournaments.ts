@@ -208,10 +208,32 @@ export const tournaments: Tournament[] = [
     rules: ["Tęstinis žiemos dvejetų ir vienetų turnyras. Rėmėjas — Neodenta."],
     schedule: ["Sezonas 2025 / 26. Prizininkai paskelbti 2026 m. balandžio 21 d."],
     tables: [],
-    tablesNote: "Finaliniai prizininkai paskelbti naujienoje „NEODENTA — prizininkai“.",
+    tablesNote:
+      "Visos lygos, vietos ir mačai — ieškokite pagal vardą arba naršykite grupes žemiau.",
     links: [
+      { label: "Lentelės", href: "/turnyrai/neodenta-2025-26#lenteles" },
       { label: "Prizininkai", href: "/naujienos/neodenta-prizininkai" },
       { label: "Nuostatai", href: "/turnyrai/neodenta-2025-26#nuostatai" },
+    ],
+  },
+  {
+    slug: "hegelmann-2025",
+    title: "Hegelmann Group Tennis Tournament",
+    season: "2025",
+    status: "archyvas",
+    format: "Vasaros tęstinis dvejetų ir vienetų",
+    sponsor: "Hegelmann Group",
+    description: "Ketvirtasis vasaros sezonas su Hegelmann Group — lygos ir visi sužaisti mačai.",
+    rules: [
+      "Tęstinis vasaros dvejetų ir vienetų turnyras.",
+      "Pagrindinis rėmėjas — Hegelmann Group.",
+    ],
+    schedule: ["Sezonas 2025 m. vasara."],
+    tables: [],
+    tablesNote: "Lygos, vietos ir mačai — ieškokite pagal vardą arba naršykite grupes.",
+    links: [
+      { label: "Lentelės", href: "/turnyrai/hegelmann-2025#lenteles" },
+      { label: "Nuostatai", href: "/turnyrai/hegelmann-2025#nuostatai" },
     ],
   },
 ];

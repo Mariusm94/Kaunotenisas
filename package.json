@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
-    "start": "prisma db push && next start",
+    "start": "prisma db push && node scripts/sync-tournament-tables.mjs && next start",
+    "db:sync-tables": "node scripts/sync-tournament-tables.mjs",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:setup": "prisma migrate dev --name init && prisma db seed",
