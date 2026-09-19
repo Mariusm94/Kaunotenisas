@@ -167,7 +167,7 @@ export default async function TournamentPage({ params }: Props) {
               <>
                 <h2 className="font-display text-3xl">Registracija</h2>
                 <p className="mt-3 text-white/75">
-                  Online forma dar neįjungta. Kol kas galite registruotis laišku.
+                  Online forma šiuo metu laikinai nepasiekiama. Galite registruotis el. paštu.
                 </p>
                 <a
                   href={mail}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { linesToList, requireAdmin } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
+import { ensureOpenRegistration } from "@/lib/registrationStore";
 import { tournamentSlugify } from "@/lib/tournamentStore";
 
 function fieldsFrom(formData: FormData, published: boolean, slug: string) {
@@ -22,7 +23,7 @@ function fieldsFrom(formData: FormData, published: boolean, slug: string) {
     { label: "Lentelės", href: `/turnyrai/${slug}#lenteles` },
     { label: "Tvarkaraštis", href: `/turnyrai/${slug}#tvarkarastis` },
   ];
-  if (status !== "archyvas") {
+  if (status === "registracija") {
     links.unshift({ label: "Registracija", href: `/turnyrai/${slug}#registracija` });
   }
 
@@ -55,6 +56,11 @@ function fieldsFrom(formData: FormData, published: boolean, slug: string) {
   };
 }
 
+async function syncRegistrationForStatus(tournamentId: string, title: string, status: string) {
+  if (status !== "registracija") return;
+  await ensureOpenRegistration({ id: tournamentId, title, status });
+}
+
 export async function createTournamentAction(formData: FormData) {
   await requireAdmin();
   const published = String(formData.get("intent")) === "publish";
@@ -70,7 +76,8 @@ export async function createTournamentAction(formData: FormData) {
     return { error: "Užpildykite sezoną, formatą ir trumpą aprašymą." };
   }
 
-  await prisma.tournament.create({ data });
+  const created = await prisma.tournament.create({ data });
+  await syncRegistrationForStatus(created.id, created.title, created.status);
   revalidatePath("/turnyrai");
   revalidatePath(`/turnyrai/${slug}`);
   revalidatePath("/");
@@ -87,10 +94,11 @@ export async function updateTournamentAction(formData: FormData) {
     return { error: "Užpildykite pavadinimą, sezoną, formatą ir aprašymą." };
   }
 
-  await prisma.tournament.update({
+  const updated = await prisma.tournament.update({
     where: { slug },
     data: { ...data, slug },
   });
+  await syncRegistrationForStatus(updated.id, updated.title, updated.status);
   revalidatePath("/turnyrai");
   revalidatePath(`/turnyrai/${slug}`);
   revalidatePath("/");

@@ -29,7 +29,7 @@ export const tournaments: Tournament[] = [
       "Tradiciškai startuojantis žiemos sezonas. Jau antrą dešimtmetį NEODENTA kviečia jungtis į teniso bendruomenę visą žiemą.",
     rules: [
       "Turnyras — tęstinis žiemos dvejetų ir vienetų ciklas visam 2026–2027 m. sezonui.",
-      "Dalyvauti gali klubo nariai ir kviestiniai žaidėjai, užsiregistravę el. paštu.",
+      "Dalyvauti gali klubo nariai ir kviestiniai žaidėjai, užsiregistravę online forma šioje skiltyje.",
       "Lygos ir poros skelbiamos po registracijos pabaigos. Žaidžiama pagal klubo nuostatus ir teisėjų sprendimus aikštelėje.",
       "Pagrindinis rėmėjas — Neodenta.",
     ],

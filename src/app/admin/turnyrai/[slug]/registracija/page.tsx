@@ -35,8 +35,8 @@ export default async function AdminTournamentRegistrationPage({ params }: Props)
           </p>
           <h1 className="mt-2 font-display text-4xl">Registracijos forma</h1>
           <p className="mt-2 max-w-2xl text-ink-soft">
-            Įjunkite formą, kai turnyro statusas „Registracija atidaryta“. Laukai: vardas, pavardė, el.
-            paštas, tel. nr. — ir tas pats partneriui.
+            Kai turnyro statusas „Registracija atidaryta“, forma įjungiama automatiškai. Čia galite
+            pakeisti tekstus, partnerio laukus arba laikinai išjungti formą.
           </p>
         </div>
         <Link

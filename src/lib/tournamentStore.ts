@@ -106,3 +106,38 @@ export function serializeTournamentFields(item: Tournament) {
     published: true,
   };
 }
+
+/** Keep open-registration tournaments aligned with static content (forms, copy, status). */
+export async function syncOpenTournamentContent() {
+  if (!dbReady()) return 0;
+  try {
+    let count = 0;
+    for (const item of staticTournaments) {
+      if (item.status !== "registracija") continue;
+      const fields = serializeTournamentFields(item);
+      await prisma.tournament.upsert({
+        where: { slug: item.slug },
+        create: fields,
+        update: {
+          title: fields.title,
+          season: fields.season,
+          status: fields.status,
+          format: fields.format,
+          sponsor: fields.sponsor,
+          description: fields.description,
+          rules: fields.rules,
+          schedule: fields.schedule,
+          tablesNote: fields.tablesNote,
+          registerSubject: fields.registerSubject,
+          links: fields.links,
+          published: true,
+        },
+      });
+      count += 1;
+    }
+    return count;
+  } catch (error) {
+    console.error("[tournaments] syncOpenTournamentContent failed:", error);
+    return 0;
+  }
+}
