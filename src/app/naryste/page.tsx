@@ -3,7 +3,7 @@ import { buildPageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import MembershipRequestForm from "@/components/MembershipRequestForm";
 import PageHeader from "@/components/PageHeader";
-import { getBoard } from "@/lib/contentStore";
+import { getBoard, getClub } from "@/lib/contentStore";
 
 export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("/naryste");
@@ -11,14 +11,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export const dynamic = "force-dynamic";
 
 export default async function MembershipPage() {
-  const board = await getBoard();
+  const [board, club] = await Promise.all([getBoard(), getClub()]);
 
   return (
     <div>
       <PageHeader
         eyebrow="Narystė"
         title="Kaip tapti klubo nariu"
-        text="Norint įstoti į Kauno teniso klubą, užpildykite prašymo formą ir perduokite ją vienam iš valdybos narių."
+        text="Norėdami įstoti į Kauno teniso klubą, užpildykite prašymo formą ir perduokite ją vienam iš valdybos narių."
       />
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-[1.1fr_0.9fr] md:px-6">
         <div className="rounded-[2rem] bg-white p-8 shadow-sm md:p-10">
@@ -55,7 +55,7 @@ export default async function MembershipPage() {
           >
             Pildyti prašymą
           </Link>
-          <MembershipRequestForm />
+          <MembershipRequestForm email={club.email} />
         </div>
         <aside className="rounded-[2rem] bg-court-deep p-8 text-white">
           <h2 className="font-display text-3xl">Valdybos nariai</h2>

@@ -131,6 +131,34 @@ export const news: NewsItem[] = [
       "Iki pasimatymo aikštelėje.",
     ],
   },
+  {
+    slug: "vasara-belvilyje-lygos",
+    title: "Turnyro „Vasara Belvilyje“ — lygos",
+    date: "2026-04-07",
+    dateLabel: "2026 m. balandžio 7 d.",
+    excerpt: "Paskelbtos vyrų, moterų ir mix lygos vasaros sezono atidarymo turnyrui.",
+    image: "/images/news/belvilis.jpg",
+    tag: "Turnyras",
+    relatedHref: "/turnyrai/vasara-belvilyje",
+    relatedLabel: "Vasara Belvilyje turnyras",
+    body: [
+      "Paskelbtos „Vasara Belvilyje“ lygos: vyrų Power, Middle ir Challenger, moterų Middle ir mix.",
+      "Kviečiame sekti lenteles ir tvarkaraštį turnyro puslapyje. Pagrindinis rėmėjas — Belvilis.",
+    ],
+  },
+  {
+    slug: "sventos-velykos-2026",
+    title: "Su Šv. Velykomis!",
+    date: "2026-04-05",
+    dateLabel: "2026 m. balandžio 5 d.",
+    excerpt: "Kauno teniso klubas sveikina visus narius ir draugus su Šv. Velykomis.",
+    image: "/images/hero/outdoor.jpg",
+    tag: "Klubas",
+    body: [
+      "Kauno teniso klubas sveikina visus narius, rėmėjus ir teniso bendruomenę su Šv. Velykomis.",
+      "Linkime ramybės, sveikatos ir greito sugrįžimo į aikšteles.",
+    ],
+  },
 ];
 
 export function getNews(slug: string) {

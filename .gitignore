@@ -14,3 +14,4 @@ public/uploads/**
 !public/uploads/**/.gitkeep
 .cursor
 tsconfig.tsbuildinfo
+.ssh-local

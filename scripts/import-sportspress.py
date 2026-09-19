@@ -688,6 +688,16 @@ def replace_draw(
 
 
 def import_players(conn: sqlite3.Connection) -> tuple[int, int]:
+    """SportsPress players are NOT club members.
+
+    Kept for optional diagnostics only — do not write into ClubMember.
+    Club members come from src/data/members.ts via seed / admin.
+    """
+    print("  skip writing SportsPress players into ClubMember (use --legacy-players-as-members to force)", flush=True)
+    return 0, 0
+
+
+def import_players_as_club_members(conn: sqlite3.Connection) -> tuple[int, int]:
     existing = {
         row[0].strip().lower()
         for row in conn.execute("SELECT name FROM ClubMember").fetchall()
@@ -775,7 +785,12 @@ def import_tournament(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import SportsPress data into Prisma SQLite")
-    parser.add_argument("--skip-players", action="store_true")
+    parser.add_argument("--skip-players", action="store_true", help="(default) do not touch ClubMember")
+    parser.add_argument(
+        "--legacy-players-as-members",
+        action="store_true",
+        help="OLD behaviour: write SportsPress players into ClubMember (not recommended)",
+    )
     parser.add_argument("--skip-archives", action="store_true")
     parser.add_argument("--only", help="Comma-separated tournament slugs to import")
     parser.add_argument("--include-hegelmann", action="store_true")
@@ -809,12 +824,13 @@ def main() -> None:
     summary: list[dict[str, Any]] = []
 
     try:
-        if not args.skip_players:
-            print("Importing players…")
-            scanned, created = import_players(conn)
-            conn.commit()
+        if args.legacy_players_as_members and not args.skip_players:
+            print("Importing SportsPress players into ClubMember (legacy)…")
+            scanned, created = import_players_as_club_members(conn)
             print(f"players scanned={scanned} created={created}")
             summary.append({"players_scanned": scanned, "players_created": created})
+        else:
+            print("Skipping ClubMember player import (official members list only)")
 
         sources = list(TOURNAMENT_SOURCES)
         if not args.skip_archives:

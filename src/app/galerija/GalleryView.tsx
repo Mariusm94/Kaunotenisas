@@ -21,12 +21,12 @@ export default function GalleryView({ albums }: { albums: Album[] }) {
       />
       <section className="mx-auto max-w-7xl px-4 py-16 md:px-6">
         {albums.map((album) => (
-          <div key={album.year} className="mb-14">
+          <div key={`${album.year}-${album.title}`} className="mb-14">
             <h2 className="font-display text-4xl">{album.title}</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {album.photos.map((photo) => (
                 <button
-                  key={photo.src}
+                  key={`${album.year}-${album.title}-${photo.src}`}
                   type="button"
                   aria-label={`Atidaryti nuotrauką: ${photo.alt}`}
                   onClick={() => setActive(photo)}
