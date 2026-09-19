@@ -76,51 +76,63 @@ function mapEntry(row: EntryRow): RegistrationEntryView {
 }
 
 export async function getOrCreateRegistration(tournamentId: string): Promise<RegistrationConfig> {
-  const existing = await prisma.$queryRaw<RegRow[]>`
-    SELECT id, tournamentId, enabled, allowPartner, title, intro
-    FROM TournamentRegistration
-    WHERE tournamentId = ${tournamentId}
-    LIMIT 1
-  `;
-  if (existing[0]) return mapReg(existing[0]);
+  try {
+    const existing = await prisma.$queryRaw<RegRow[]>`
+      SELECT id, tournamentId, enabled, allowPartner, title, intro
+      FROM TournamentRegistration
+      WHERE tournamentId = ${tournamentId}
+      LIMIT 1
+    `;
+    if (existing[0]) return mapReg(existing[0]);
 
-  const id = randomUUID();
-  const now = new Date().toISOString();
-  await prisma.$executeRaw`
-    INSERT INTO TournamentRegistration
-      (id, tournamentId, enabled, allowPartner, title, intro, createdAt, updatedAt)
-    VALUES
-      (${id}, ${tournamentId}, 0, 1, ${"Registracija"}, ${""}, ${now}, ${now})
-  `;
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    await prisma.$executeRaw`
+      INSERT INTO TournamentRegistration
+        (id, tournamentId, enabled, allowPartner, title, intro, createdAt, updatedAt)
+      VALUES
+        (${id}, ${tournamentId}, 0, 1, ${"Registracija"}, ${""}, ${now}, ${now})
+    `;
 
-  return {
-    id,
-    tournamentId,
-    enabled: false,
-    allowPartner: true,
-    title: "Registracija",
-    intro: "",
-  };
+    return {
+      id,
+      tournamentId,
+      enabled: false,
+      allowPartner: true,
+      title: "Registracija",
+      intro: "",
+    };
+  } catch (error) {
+    throw new Error(
+      "Nepavyko pasiekti registracijos lentelių. Paleiskite `npx prisma db push` serveryje.",
+      { cause: error },
+    );
+  }
 }
 
 export async function getRegistrationByTournamentSlug(slug: string) {
-  const tournament = await prisma.tournament.findUnique({
-    where: { slug },
-    select: { id: true, slug: true, title: true, status: true },
-  });
-  if (!tournament) return null;
+  try {
+    const tournament = await prisma.tournament.findUnique({
+      where: { slug },
+      select: { id: true, slug: true, title: true, status: true },
+    });
+    if (!tournament) return null;
 
-  const rows = await prisma.$queryRaw<RegRow[]>`
-    SELECT id, tournamentId, enabled, allowPartner, title, intro
-    FROM TournamentRegistration
-    WHERE tournamentId = ${tournament.id}
-    LIMIT 1
-  `;
+    const rows = await prisma.$queryRaw<RegRow[]>`
+      SELECT id, tournamentId, enabled, allowPartner, title, intro
+      FROM TournamentRegistration
+      WHERE tournamentId = ${tournament.id}
+      LIMIT 1
+    `;
 
-  return {
-    tournament,
-    registration: rows[0] ? mapReg(rows[0]) : null,
-  };
+    return {
+      tournament,
+      registration: rows[0] ? mapReg(rows[0]) : null,
+    };
+  } catch {
+    // Staging / seni DB dump'ai be TournamentRegistration — puslapis turi veikti be formos.
+    return null;
+  }
 }
 
 export async function updateRegistrationConfig(
