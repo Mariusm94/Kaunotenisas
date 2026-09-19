@@ -103,7 +103,7 @@ export default function TournamentExplorer({ slug, draws }: { slug: string; draw
                   {place ? ` · tavo vieta ${place}` : ""}
                 </p>
               </div>
-              <span className="font-semibold text-court">Atidaryti lygą →</span>
+              <span className="font-semibold text-court">Atidaryti lentelę →</span>
             </Link>
           );
         })}

@@ -62,7 +62,7 @@ export default async function TournamentPage({ params }: Props) {
             Nuostatai
           </a>
           <a href="#lenteles" className="rounded-full border border-line px-4 py-2 text-sm font-semibold">
-            Lygos
+            Lentelės
           </a>
           <a href="#artimiausi" className="rounded-full border border-line px-4 py-2 text-sm font-semibold">
             Artimiausi
@@ -78,11 +78,11 @@ export default async function TournamentPage({ params }: Props) {
         </nav>
 
         <section id="lenteles" className="mt-14 scroll-mt-28">
-          <h2 className="font-display text-3xl">Lygos</h2>
+          <h2 className="font-display text-3xl">Turnyrinės lentelės</h2>
           {hasLeagueDraws ? (
             <>
               <p className="mt-4 max-w-3xl leading-7 text-ink-soft">
-                Pasirink lygą — ten visa lentelė su taškais ir rezultatais, o po ja playoff lentelės.
+                Pasirink lygą ir spausk <strong>Atidaryti lentelę</strong> — ten taškai, rezultatai ir playoff.
               </p>
               <div className="mt-8">
                 <TournamentExplorer slug={item.slug} draws={draws} />
