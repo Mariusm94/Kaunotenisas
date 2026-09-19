@@ -191,9 +191,9 @@ export async function listMatches(tournamentSlug: string, externalKey: string): 
       include: { matches: { orderBy: [{ playedAt: "asc" }, { createdAt: "asc" }] } },
     });
     if (draw && draw.matches.length) {
-      // Viešai: confirmed score; pending rodo seną (previousScore), ne pateiktą.
+      // Viešai: confirmed + scheduled (artimiausi); pending rodo seną score.
       return draw.matches
-        .filter((item) => item.status === "confirmed" || item.status === "pending")
+        .filter((item) => item.status === "confirmed" || item.status === "pending" || item.status === "scheduled")
         .map((item) => ({
           id: item.id,
           drawId: draw.externalKey,
@@ -204,7 +204,12 @@ export async function listMatches(tournamentSlug: string, externalKey: string): 
           home: item.home,
           away: item.away,
           date: item.playedAt ?? "",
-          score: item.status === "pending" ? (item.previousScore ?? "") : (item.score ?? ""),
+          score:
+            item.status === "pending"
+              ? (item.previousScore ?? "")
+              : item.status === "scheduled"
+                ? ""
+                : (item.score ?? ""),
           status: item.status === "pending" ? "confirmed" : item.status,
         }));
     }

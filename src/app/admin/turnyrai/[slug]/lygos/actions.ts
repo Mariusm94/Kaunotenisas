@@ -2,7 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { PlayoffBracket } from "@/data/hegelmannBrackets";
 import { linesToList, requireAdmin } from "@/lib/admin";
+import {
+  applyMatchResult,
+  buildEmptyTreeBracket,
+  isBracketSize,
+  normalizeSlots,
+  parseBracketSize,
+  rebuildRoundsFromSlots,
+  sizeLabel,
+} from "@/lib/bracketBuilder";
 import { emptyScores } from "@/lib/leagueStore";
 import { prisma } from "@/lib/prisma";
 import { recomputePlayerCareerStats } from "@/lib/playerCareer";
@@ -118,7 +128,9 @@ export async function createMatchAction(formData: FormData) {
   const away = String(formData.get("away") ?? "").trim();
   const score = String(formData.get("score") ?? "").trim();
   const stage = String(formData.get("stage") ?? "").trim();
-  const status = String(formData.get("status") ?? "confirmed").trim() || "confirmed";
+  const statusRaw = String(formData.get("status") ?? "confirmed").trim() || "confirmed";
+  const status =
+    statusRaw === "pending" ? "pending" : statusRaw === "scheduled" ? "scheduled" : "confirmed";
   const playedAt = String(formData.get("playedAt") ?? "").trim() || null;
 
   if (!slug || !externalKey || !home || !away) return;
@@ -135,7 +147,7 @@ export async function createMatchAction(formData: FormData) {
       away,
       score,
       stage,
-      status: status === "pending" ? "pending" : "confirmed",
+      status: !score && status === "confirmed" ? "scheduled" : status,
       playedAt,
     },
   });
@@ -156,7 +168,9 @@ export async function updateMatchAction(formData: FormData) {
   const away = String(formData.get("away") ?? "").trim();
   const score = String(formData.get("score") ?? "").trim();
   const stage = String(formData.get("stage") ?? "").trim();
-  const status = String(formData.get("status") ?? "confirmed").trim() || "confirmed";
+  const statusRaw = String(formData.get("status") ?? "confirmed").trim() || "confirmed";
+  const status =
+    statusRaw === "pending" ? "pending" : statusRaw === "scheduled" ? "scheduled" : "confirmed";
   const playedAt = String(formData.get("playedAt") ?? "").trim() || null;
 
   if (!matchId || !home || !away) return;
@@ -168,7 +182,7 @@ export async function updateMatchAction(formData: FormData) {
       away,
       score,
       stage,
-      status: status === "pending" ? "pending" : "confirmed",
+      status,
       playedAt,
     },
   });
@@ -254,6 +268,134 @@ export async function generateRoundRobinMatchesAction(formData: FormData) {
 
   revalidateLeaguePaths(slug, externalKey);
   redirect(`/admin/turnyrai/${slug}/lygos/${externalKey}`);
+}
+
+export async function createKnockoutBracketAction(formData: FormData) {
+  await requireAdmin();
+  const slug = String(formData.get("tournamentSlug") ?? "").trim();
+  const externalKey = String(formData.get("externalKey") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim() || "Finalas";
+  const sizeRaw = Number.parseInt(String(formData.get("size") ?? "8"), 10);
+  const slots = linesToList(String(formData.get("slots") ?? ""));
+
+  if (!slug || !externalKey || !isBracketSize(sizeRaw)) return;
+
+  const draw = await prisma.leagueDraw.findFirst({
+    where: { externalKey, tournament: { slug } },
+  });
+  if (!draw) return;
+
+  const size = sizeRaw;
+  const externalId = tournamentSlugify(`${title}-${size}`) || `playoff-${size}-${Date.now().toString().slice(-4)}`;
+  const payload = buildEmptyTreeBracket({
+    id: externalId,
+    title,
+    group: draw.groupName,
+    drawId: draw.externalKey,
+    league: draw.title,
+    size,
+    slots,
+  });
+
+  await prisma.knockoutBracket.upsert({
+    where: { drawId_externalId: { drawId: draw.id, externalId } },
+    update: {
+      title: payload.title,
+      league: payload.league,
+      groupName: payload.group,
+      payload: JSON.stringify(payload),
+    },
+    create: {
+      drawId: draw.id,
+      externalId,
+      title: payload.title,
+      league: payload.league,
+      groupName: payload.group,
+      payload: JSON.stringify(payload),
+    },
+  });
+
+  revalidateLeaguePaths(slug, externalKey);
+  redirect(`/admin/turnyrai/${slug}/lygos/${externalKey}#playoff`);
+}
+
+export async function updateBracketSlotsAction(formData: FormData) {
+  await requireAdmin();
+  const slug = String(formData.get("tournamentSlug") ?? "").trim();
+  const externalKey = String(formData.get("externalKey") ?? "").trim();
+  const bracketId = String(formData.get("bracketId") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const slots = linesToList(String(formData.get("slots") ?? ""));
+
+  if (!slug || !externalKey || !bracketId || !title) return;
+
+  const bracket = await prisma.knockoutBracket.findUnique({ where: { id: bracketId } });
+  if (!bracket) return;
+
+  let existing: PlayoffBracket;
+  try {
+    existing = JSON.parse(bracket.payload) as PlayoffBracket;
+  } catch {
+    return;
+  }
+
+  const size = parseBracketSize(existing.size, existing.slots?.length || slots.length);
+  const normalized = normalizeSlots(slots, size);
+  const rounds = rebuildRoundsFromSlots(normalized, size);
+  const final = rounds[rounds.length - 1]?.matches[0];
+  const payload: PlayoffBracket = {
+    ...existing,
+    title,
+    size: sizeLabel(size),
+    layout: "tree",
+    slots: normalized,
+    rounds,
+    champion: final?.winner?.trim() || undefined,
+  };
+
+  await prisma.knockoutBracket.update({
+    where: { id: bracketId },
+    data: {
+      title,
+      payload: JSON.stringify(payload),
+    },
+  });
+
+  revalidateLeaguePaths(slug, externalKey);
+  redirect(`/admin/turnyrai/${slug}/lygos/${externalKey}#playoff`);
+}
+
+export async function updateBracketMatchAction(formData: FormData) {
+  await requireAdmin();
+  const slug = String(formData.get("tournamentSlug") ?? "").trim();
+  const externalKey = String(formData.get("externalKey") ?? "").trim();
+  const bracketId = String(formData.get("bracketId") ?? "").trim();
+  const roundIndex = Number.parseInt(String(formData.get("roundIndex") ?? ""), 10);
+  const matchIndex = Number.parseInt(String(formData.get("matchIndex") ?? ""), 10);
+  const score = String(formData.get("score") ?? "").trim();
+  const winner = String(formData.get("winner") ?? "").trim();
+
+  if (!slug || !externalKey || !bracketId || !Number.isFinite(roundIndex) || !Number.isFinite(matchIndex)) return;
+
+  const bracket = await prisma.knockoutBracket.findUnique({ where: { id: bracketId } });
+  if (!bracket) return;
+
+  let existing: PlayoffBracket;
+  try {
+    existing = JSON.parse(bracket.payload) as PlayoffBracket;
+  } catch {
+    return;
+  }
+
+  const payload = applyMatchResult(existing, roundIndex, matchIndex, score, winner);
+
+  await prisma.knockoutBracket.update({
+    where: { id: bracketId },
+    data: { payload: JSON.stringify(payload) },
+  });
+
+  revalidateLeaguePaths(slug, externalKey);
+  redirect(`/admin/turnyrai/${slug}/lygos/${externalKey}#playoff`);
 }
 
 export async function upsertBracketPayloadAction(formData: FormData) {

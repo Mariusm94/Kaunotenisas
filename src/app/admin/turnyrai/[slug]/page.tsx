@@ -58,7 +58,7 @@ export default async function EditTournamentPage({ params }: Props) {
             href={`/admin/turnyrai/${slug}/lygos`}
             className="rounded-full bg-court px-5 py-3 text-sm font-semibold text-white"
           >
-            Valdyti lygas
+            Lygos · mačai · playoff
           </Link>
         </div>
       </div>

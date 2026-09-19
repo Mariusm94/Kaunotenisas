@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TournamentRegistrationForm from "@/app/turnyrai/[slug]/TournamentRegistrationForm";
+import MatchList from "@/components/MatchList";
 import PageHeader from "@/components/PageHeader";
 import TournamentExplorer from "@/components/TournamentExplorer";
 import { getClub } from "@/lib/contentStore";
 import { listDraws } from "@/lib/leagueStore";
 import { getRegistrationByTournamentSlug } from "@/lib/registrationStore";
 import { getTournament } from "@/lib/tournamentStore";
+import { listUpcomingMatches } from "@/lib/upcomingMatches";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -27,10 +29,11 @@ const labels = {
 
 export default async function TournamentPage({ params }: Props) {
   const { slug } = await params;
-  const [item, club, regBundle] = await Promise.all([
+  const [item, club, regBundle, upcoming] = await Promise.all([
     getTournament(slug),
     getClub(),
     getRegistrationByTournamentSlug(slug),
+    listUpcomingMatches(slug),
   ]);
   if (!item) notFound();
 
@@ -60,6 +63,9 @@ export default async function TournamentPage({ params }: Props) {
           </a>
           <a href="#lenteles" className="rounded-full border border-line px-4 py-2 text-sm font-semibold">
             Lygos
+          </a>
+          <a href="#artimiausi" className="rounded-full border border-line px-4 py-2 text-sm font-semibold">
+            Artimiausi
           </a>
           <a href="#tvarkarastis" className="rounded-full border border-line px-4 py-2 text-sm font-semibold">
             Tvarkaraštis
@@ -107,6 +113,27 @@ export default async function TournamentPage({ params }: Props) {
               )}
             </>
           )}
+        </section>
+
+        <section id="artimiausi" className="mt-14 scroll-mt-28">
+          <h2 className="font-display text-3xl">Artimiausi žaidimai</h2>
+          <p className="mt-3 max-w-2xl text-ink-soft">Planuojami mačai — rezultatas dar neįvestas.</p>
+          <div className="mt-6">
+            <MatchList
+              matches={upcoming.map((match) => ({
+                id: match.id,
+                date: match.date,
+                group: match.group,
+                league: match.league,
+                stage: match.stage,
+                kind: "grupe",
+                home: match.home,
+                away: match.away,
+                score: "",
+              }))}
+              empty="Artimiausių žaidimų kol kas nėra."
+            />
+          </div>
         </section>
 
         <section id="tvarkarastis" className="mt-14 scroll-mt-28">
