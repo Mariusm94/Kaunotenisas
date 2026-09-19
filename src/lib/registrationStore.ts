@@ -75,6 +75,57 @@ function mapEntry(row: EntryRow): RegistrationEntryView {
   };
 }
 
+let schemaReady: Promise<void> | null = null;
+
+/** Older Hostinger DBs may lack registration tables even after code deploy. */
+export function ensureRegistrationSchema() {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "TournamentRegistration" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "tournamentId" TEXT NOT NULL,
+          "enabled" BOOLEAN NOT NULL DEFAULT false,
+          "allowPartner" BOOLEAN NOT NULL DEFAULT true,
+          "title" TEXT NOT NULL DEFAULT 'Registracija',
+          "intro" TEXT NOT NULL DEFAULT '',
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" DATETIME NOT NULL,
+          CONSTRAINT "TournamentRegistration_tournamentId_fkey"
+            FOREIGN KEY ("tournamentId") REFERENCES "Tournament" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )
+      `);
+      await prisma.$executeRawUnsafe(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "TournamentRegistration_tournamentId_key" ON "TournamentRegistration"("tournamentId")`,
+      );
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "TournamentRegistrationEntry" (
+          "id" TEXT NOT NULL PRIMARY KEY,
+          "registrationId" TEXT NOT NULL,
+          "firstName" TEXT NOT NULL,
+          "lastName" TEXT NOT NULL,
+          "email" TEXT NOT NULL,
+          "phone" TEXT NOT NULL,
+          "partnerFirstName" TEXT,
+          "partnerLastName" TEXT,
+          "partnerEmail" TEXT,
+          "partnerPhone" TEXT,
+          "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "TournamentRegistrationEntry_registrationId_fkey"
+            FOREIGN KEY ("registrationId") REFERENCES "TournamentRegistration" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        )
+      `);
+      await prisma.$executeRawUnsafe(
+        `CREATE INDEX IF NOT EXISTS "TournamentRegistrationEntry_registrationId_idx" ON "TournamentRegistrationEntry"("registrationId")`,
+      );
+    })().catch((error) => {
+      schemaReady = null;
+      throw error;
+    });
+  }
+  return schemaReady;
+}
+
 function defaultRegistrationCopy(tournamentTitle: string) {
   return {
     title: `Registracija — ${tournamentTitle}`,
@@ -87,6 +138,7 @@ export async function getOrCreateRegistration(
   tournamentId: string,
   opts?: { enabled?: boolean; title?: string; intro?: string },
 ): Promise<RegistrationConfig> {
+  await ensureRegistrationSchema();
   try {
     const existing = await prisma.$queryRaw<RegRow[]>`
       SELECT id, tournamentId, enabled, allowPartner, title, intro
@@ -135,6 +187,7 @@ export async function ensureOpenRegistration(tournament: {
   const copy = defaultRegistrationCopy(tournament.title);
 
   try {
+    await ensureRegistrationSchema();
     const rows = await prisma.$queryRaw<RegRow[]>`
       SELECT id, tournamentId, enabled, allowPartner, title, intro
       FROM TournamentRegistration
@@ -184,6 +237,7 @@ export async function ensureOpenRegistration(tournament: {
 
 export async function ensureAllOpenRegistrations() {
   try {
+    await ensureRegistrationSchema();
     const open = await prisma.tournament.findMany({
       where: { status: "registracija", published: true },
       select: { id: true, title: true, status: true, slug: true },
@@ -220,6 +274,7 @@ export async function ensureAllOpenRegistrations() {
 
 export async function getRegistrationByTournamentSlug(slug: string) {
   try {
+    await ensureRegistrationSchema();
     const tournament = await prisma.tournament.findUnique({
       where: { slug },
       select: { id: true, slug: true, title: true, status: true },
@@ -244,8 +299,8 @@ export async function getRegistrationByTournamentSlug(slug: string) {
       tournament,
       registration: rows[0] ? mapReg(rows[0]) : null,
     };
-  } catch {
-    // Staging / seni DB dump'ai be TournamentRegistration — puslapis turi veikti be formos.
+  } catch (error) {
+    console.error("[registration] getRegistrationByTournamentSlug failed:", error);
     return null;
   }
 }
@@ -254,6 +309,7 @@ export async function updateRegistrationConfig(
   id: string,
   data: { title: string; intro: string; enabled: boolean; allowPartner: boolean },
 ) {
+  await ensureRegistrationSchema();
   const now = new Date().toISOString();
   await prisma.$executeRaw`
     UPDATE TournamentRegistration
@@ -268,6 +324,7 @@ export async function updateRegistrationConfig(
 }
 
 export async function listRegistrationEntries(registrationId: string): Promise<RegistrationEntryView[]> {
+  await ensureRegistrationSchema();
   const rows = await prisma.$queryRaw<EntryRow[]>`
     SELECT
       id, firstName, lastName, email, phone,
@@ -290,6 +347,7 @@ export async function createRegistrationEntry(data: {
   partnerEmail: string | null;
   partnerPhone: string | null;
 }) {
+  await ensureRegistrationSchema();
   const id = randomUUID();
   const now = new Date().toISOString();
   await prisma.$executeRaw`
@@ -304,6 +362,7 @@ export async function createRegistrationEntry(data: {
 }
 
 export async function deleteRegistrationEntry(entryId: string) {
+  await ensureRegistrationSchema();
   await prisma.$executeRaw`
     DELETE FROM TournamentRegistrationEntry WHERE id = ${entryId}
   `;
