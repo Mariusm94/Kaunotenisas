@@ -4,6 +4,8 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import { listTournaments } from "@/lib/tournamentStore";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   return buildPageMetadata("/turnyrai");
 }

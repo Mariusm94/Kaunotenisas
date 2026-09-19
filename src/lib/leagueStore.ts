@@ -2,6 +2,13 @@ import { hegelmannBrackets, type PlayoffBracket } from "@/data/hegelmannBrackets
 import { hegelmannDraws, type LeagueDraw } from "@/data/hegelmannDraws";
 import { hegelmannMatches, matchesQuery } from "@/data/hegelmannSchedule";
 import { prisma } from "@/lib/prisma";
+import {
+  dumpBrackets,
+  dumpDraw,
+  dumpDraws,
+  dumpMatches,
+  loadTournamentDump,
+} from "@/lib/tournamentTablesDump";
 
 export type { LeagueDraw, PlayoffBracket };
 
@@ -117,16 +124,20 @@ async function dbDrawRows(tournamentSlug: string) {
   }
 }
 
-/** Fallback į static Hegelmann duomenis tik kai DB tuščia tam turnyrui ir slug = hegelmann-2026. */
-function useStaticFallback(tournamentSlug: string, dbEmpty: boolean) {
-  return dbEmpty && tournamentSlug === "hegelmann-2026";
+/** Fallback: Hegelmann static bundle, then JSON dumps shipped in repo. */
+function fileFallbackDraws(tournamentSlug: string): LeagueDraw[] {
+  if (tournamentSlug === "hegelmann-2026") return staticDraws();
+  return dumpDraws(tournamentSlug);
+}
+
+function hasFileFallback(tournamentSlug: string) {
+  return tournamentSlug === "hegelmann-2026" || Boolean(loadTournamentDump(tournamentSlug));
 }
 
 export async function listDraws(tournamentSlug: string): Promise<LeagueDraw[]> {
   const rows = await dbDrawRows(tournamentSlug);
   if (rows && rows.length) return rows.map(toDraw);
-  if (useStaticFallback(tournamentSlug, !rows || rows.length === 0)) return staticDraws();
-  return [];
+  return fileFallbackDraws(tournamentSlug);
 }
 
 export async function getDraw(tournamentSlug: string, externalKey: string): Promise<LeagueDraw | undefined> {
@@ -135,15 +146,16 @@ export async function getDraw(tournamentSlug: string, externalKey: string): Prom
     const row = rows.find((item) => item.externalKey === externalKey);
     return row ? toDraw(row) : undefined;
   }
-  if (useStaticFallback(tournamentSlug, !rows || rows.length === 0)) {
+  if (tournamentSlug === "hegelmann-2026") {
     return hegelmannDraws.find((item) => item.id === externalKey);
   }
-  return undefined;
+  return dumpDraw(tournamentSlug, externalKey);
 }
 
 export async function listBrackets(tournamentSlug: string, externalKey: string): Promise<PlayoffBracket[]> {
   if (!dbReady()) {
-    return useStaticFallback(tournamentSlug, true) ? staticBrackets(externalKey) : [];
+    if (tournamentSlug === "hegelmann-2026") return staticBrackets(externalKey);
+    return dumpBrackets(tournamentSlug, externalKey);
   }
   try {
     const draw = await prisma.leagueDraw.findFirst({
@@ -153,19 +165,22 @@ export async function listBrackets(tournamentSlug: string, externalKey: string):
       },
       include: { brackets: { orderBy: { title: "asc" } } },
     });
-    if (draw) return draw.brackets.map(toBracket);
-    const rows = await dbDrawRows(tournamentSlug);
-    if (useStaticFallback(tournamentSlug, !rows || rows.length === 0)) return staticBrackets(externalKey);
-    return [];
+    if (draw?.brackets.length) return draw.brackets.map(toBracket);
+    if (tournamentSlug === "hegelmann-2026") return staticBrackets(externalKey);
+    return dumpBrackets(tournamentSlug, externalKey);
   } catch {
-    return useStaticFallback(tournamentSlug, true) ? staticBrackets(externalKey) : [];
+    if (tournamentSlug === "hegelmann-2026") return staticBrackets(externalKey);
+    return dumpBrackets(tournamentSlug, externalKey);
   }
 }
 
 export async function listMatches(tournamentSlug: string, externalKey: string): Promise<LeagueMatch[]> {
   if (!dbReady()) {
-    const draw = hegelmannDraws.find((item) => item.id === externalKey);
-    return draw && useStaticFallback(tournamentSlug, true) ? staticMatches(draw) : [];
+    if (tournamentSlug === "hegelmann-2026") {
+      const draw = hegelmannDraws.find((item) => item.id === externalKey);
+      return draw ? staticMatches(draw) : [];
+    }
+    return dumpMatches(tournamentSlug, externalKey, guessKind);
   }
   try {
     const draw = await prisma.leagueDraw.findFirst({
@@ -175,7 +190,7 @@ export async function listMatches(tournamentSlug: string, externalKey: string): 
       },
       include: { matches: { orderBy: [{ playedAt: "asc" }, { createdAt: "asc" }] } },
     });
-    if (draw) {
+    if (draw && draw.matches.length) {
       // Viešai: confirmed score; pending rodo seną (previousScore), ne pateiktą.
       return draw.matches
         .filter((item) => item.status === "confirmed" || item.status === "pending")
@@ -193,15 +208,25 @@ export async function listMatches(tournamentSlug: string, externalKey: string): 
           status: item.status === "pending" ? "confirmed" : item.status,
         }));
     }
-    const rows = await dbDrawRows(tournamentSlug);
-    if (useStaticFallback(tournamentSlug, !rows || rows.length === 0)) {
+    // DB has draw row but no matches (or no draw) — use JSON dump / static
+    if (draw && !draw.matches.length) {
+      if (tournamentSlug === "hegelmann-2026") {
+        const staticDraw = hegelmannDraws.find((item) => item.id === externalKey);
+        return staticDraw ? staticMatches(staticDraw) : [];
+      }
+      return dumpMatches(tournamentSlug, externalKey, guessKind);
+    }
+    if (tournamentSlug === "hegelmann-2026") {
       const staticDraw = hegelmannDraws.find((item) => item.id === externalKey);
       return staticDraw ? staticMatches(staticDraw) : [];
     }
-    return [];
+    return dumpMatches(tournamentSlug, externalKey, guessKind);
   } catch {
-    const staticDraw = hegelmannDraws.find((item) => item.id === externalKey);
-    return staticDraw && useStaticFallback(tournamentSlug, true) ? staticMatches(staticDraw) : [];
+    if (tournamentSlug === "hegelmann-2026") {
+      const staticDraw = hegelmannDraws.find((item) => item.id === externalKey);
+      return staticDraw ? staticMatches(staticDraw) : [];
+    }
+    return dumpMatches(tournamentSlug, externalKey, guessKind);
   }
 }
 
@@ -231,4 +256,4 @@ export function parseNumberList(value: string): number[] {
     .filter((n) => Number.isFinite(n));
 }
 
-export { matchesQuery };
+export { matchesQuery, hasFileFallback };
